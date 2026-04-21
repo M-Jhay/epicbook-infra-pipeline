@@ -34,10 +34,8 @@ variable "admin_username" {
   default     = "jecinta"  
 }
 
-variable "public_key_path" {
-  description = "Path to the SSH public key file"
-  type        = string
-  default     = "C:/Users/DELL/.ssh/ReactAppKey.pub"
+variable "ssh_public_key" {
+  description = "Public key for VM login"
 }
 
 
