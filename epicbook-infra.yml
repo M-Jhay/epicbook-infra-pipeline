@@ -13,7 +13,7 @@ variables:
   - name: bkstrg
     value: 'jesscapstone2026'
   - name: bkcontainer
-    value: 'tfstate'
+    value: 'tfstate-container'
   - name: bkkey
     value: 'tfstate-container'
 
@@ -27,7 +27,17 @@ stages:
         sudo apt-get update -y
         sudo apt-get install -y unzip
       displayName: 'System Prep'
+      
+ # Download your SSH keys from Secure Files
+    - task: DownloadSecureFile@1
+      name: sshPublicKey
+      inputs:
+        secureFile: 'ReactAppKey.pub'
 
+    - task: DownloadSecureFile@1
+      name: sshPrivateKey
+      inputs:
+        secureFile: 'ReactAppKey'
     - task: TerraformInstaller@1
       displayName: 'Install Terraform'
       inputs:
