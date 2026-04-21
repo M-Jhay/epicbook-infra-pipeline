@@ -1,0 +1,71 @@
+trigger:
+- main
+
+pool:
+  name: 'EpicBookCapstone'
+
+variables:
+  - group: Db-secrets
+  - name: azureServiceConnection
+    value: 'capstone-service-connection'
+  - name: bkstrgrg
+    value: 'CapstoneAgentVm'
+  - name: bkstrg
+    value: 'jesscapstone2026'
+  - name: bkcontainer
+    value: 'tfstate'
+  - name: bkkey
+    value: 'tfstate-container'
+
+stages:
+- stage: ProvisionInfra
+  displayName: 'Provision Infrastructure'
+  jobs:
+  - job: TerraformJob
+    steps:
+    - script: |
+        sudo apt-get update -y
+        sudo apt-get install -y unzip
+      displayName: 'System Prep'
+
+    - task: TerraformInstaller@1
+      displayName: 'Install Terraform'
+      inputs:
+        terraformVersion: 'latest'
+
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform Init'
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        backendServiceArm: $(azureServiceConnection)
+        backendAzureRmResourceGroupName: $(bkstrgrg)
+        backendAzureRmStorageAccountName: $(bkstrg)
+        backendAzureRmContainerName: $(bkcontainer)
+        backendAzureRmKey: $(bkkey)
+
+    - script: |
+        cat > $(System.DefaultWorkingDirectory)/pipeline.auto.tfvars <<EOF
+        db_admin_username     = "$(db_user)"
+        db_admin_password = "$(db_password)"
+        ssh_public_key    = "$(public_key)"
+        EOF
+        grep -q '""' $(System.DefaultWorkingDirectory)/pipeline.auto.tfvars && echo "##[error]One or more variables are empty" && exit 1
+        echo "All vars resolved OK"
+      displayName: 'Write & Validate tfvars'
+
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform Plan'
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        environmentServiceNameAzureRM: $(azureServiceConnection)
+        commandOptions: '-out=tfplan'
+
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform Apply'
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        environmentServiceNameAzureRM: $(azureServiceConnection)
+        commandOptions: '-auto-approve tfplan'
